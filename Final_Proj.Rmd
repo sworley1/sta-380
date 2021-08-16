@@ -1,0 +1,566 @@
+---
+title: "Final_Proj"
+author: "Sam Worley"
+date: "8/16/2021"
+output: 
+  md_document:
+    variant: markdown_github
+    
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggridges)
+library(mosaic)
+library(quantmod)
+library(foreach)
+```
+
+```{r include=FALSE} 
+library(readr)
+green <- read_csv("Data/greenbuildings.csv")
+my_ggtheme <- function() {
+
+  theme_minimal(base_family = "Asap Condensed") +
+    theme(
+      panel.grid.minor = element_blank(),
+      plot.title = element_text(vjust = -1)
+          )
+}
+```
+
+## Visual Story Telling Part 1: Green Buildings
+
+There are few things I think the "Excel Guru" overlooked in his analysis and how he chose to derive at a decision. The first thing that jumps out at me is that after he removed what outliers he noticed, he looked at the rent comparisons of green buildings vs non-green buildings without any further breakdowns. This has issues because there tends to be a lot of variance in some of the variables we have access to. Take the number of stories a building has into account, the proposed project has 15 stories but as you can see in this graph, the data set has a lot of variance
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+green %>% ggplot(aes(x = stories)) + 
+  geom_histogram(fill = "dark orange") + 
+  my_ggtheme() + 
+  labs(
+    title = "Histogram: Number of Stories",
+    caption = "Distribution of the number of stories buildings have in the data set",
+    x = "Number of Stories",
+    y = "Frequenncy"
+  )
+```
+
+The graph shows that there are sever buildings in this data set with more than 30 stories which is double the number of stories of the proposed buildings. This can impose bias in our data set as different sized buildings might have different trends in energy consumption or other costs. 
+
+We also see that there is significant difference in age of buildings, which is problematic because of the advances in technology in recent years which old buildings may not have had access to.
+```{r hist-building-age, include = FALSE}
+green %>% ggplot(aes(x = age)) + 
+  geom_histogram(fill = "dark orange") + 
+  labs(
+    title = "Histogram: Building Age",
+    y = "Frequency",
+    x = "Building Age",
+    caption = 'Distribution of Age in the given dataset'
+  ) + 
+  my_ggtheme()
+```
+
+The nice thing about the variance in the data set is that we slice the data to focus on buildings in the data set similar to the proposed constructions project. Taking into account the variables we know, we can filter the data to match the specifications we have by only looking at buildings with between 10 and 20 stories, between 200,000 and 300,000 square feet, and less than 10 years old. This gives us a better comparison because it might remove some of the underlying confounding variables that the "Exel guru" did not take into account and give us a better understanding between the cost and benefit of building eco or not.  
+
+```{r filter-building, include=FALSE, echo=FALSE}
+green <- green %>% 
+  filter(
+    age <= 10,
+    size >= 200000 & size <= 300000,
+    stories >= 10 & stories <= 20
+  ) %>% mutate(
+    building_type = ifelse(green_rating == 1, "Green", "Non-Green"),
+    diff_compare_to_cluster = Rent - cluster_rent
+  )
+```
+
+Once we filter the data, we are left with 52 buildings to analyze. Starting by looking at the distribution of rent between green buildings and non-green buildings
+
+```{r geom-ridges, echo=FALSE}
+library(ggridges)
+green %>% ggplot(aes(x = Rent, y = building_type)) + 
+  geom_density_ridges() + 
+  my_ggtheme() + 
+  labs(
+    title = "Distribution of Rent: Green vs Non-Green Buildings",
+    x = "Rent per Square Foot per Year ($)",
+    y = "Building Type"
+  ) + scale_color_manual(values = c("dark green", "grey"))
+```
+
+Here it actually looks like the Green buildings have higher revenue streams than non-green buildings but this doesn't take a building's cluster into account which is a better comparison. 
+
+
+```{r scatter, echo=FALSE}
+green %>% ggplot(aes(x = cluster_rent, y = diff_compare_to_cluster)) + 
+  geom_point(aes(color = building_type)) +
+  my_ggtheme() + 
+  labs(
+    title = "How Buildings Compare to Cluster Average Rent",
+    y = "Difference in Rent Compared to Cluster Average",
+    x = "Average Building Rent in Cluster",
+    caption = "Rent is yearly income per square foot. Only looking at buildings less than 10 years old"
+  ) + scale_color_manual(values = c("dark green", "grey"))
+
+```
+
+In this graph we see that while in most instances, green buildings have higher revenue per square foot than buildings in the same cluster, there are instances where the green buildings have rent prices lower than the cluster average. This further discredits the "Excel Guru's" initial because it is not so cut and dry. To really answer this question more data must be taken into account such as which specific cluster Austin falls into so as there can be better informed decision making into the actual going price for rent for green buildings compared to the average. Plus then you can take into account the number of energy days needed and compute the exact energy costs of the building to make a more accurate decision. 
+
+
+## Visual Story Telling Part 2: Flights at ABIA
+
+### Understanding Delays and Where they Come From
+
+```{r atx-data, include=FALSE, warning=FALSE, message=FALSE}
+atx <- read_csv("Data/ABIA.csv")
+```
+
+I'm always fascinated (maybe more so annoyed by) flight delays, and whether pilots can actually "make up time in the air" as they claim.  
+
+```{r flight-time-duration , echo=FALSE}
+atx %>% ggplot(aes(x = AirTime, y = ArrDelay)) + 
+  geom_point(color = "dark orange", alpha = 0.5) +
+  my_ggtheme() + 
+  labs(
+    title = "Can You Make up Time in the Air?",
+    subtitle = "Time in Air vs Arrival Delay", 
+    y = "Delay (minutes)",
+    x = "Time in Air (minutes)"
+  )
+```
+
+Wow, looks like an overwhelming number of flights have some sort of delay. But is this always because of time in the air? What about delays on the ground? What happens when we take departure delays out of the equation? 
+
+```{r echo=FALSE, warning=FALSE}
+atx %>% mutate(
+  delay = ArrDelay - DepDelay
+) %>% ggplot(aes(x = AirTime, y = delay)) + 
+  geom_point(alpha = 0.5, color = "dark orange") + 
+  my_ggtheme() + 
+  labs(
+    title = "Make up time in air?",
+    subtitle = "Taking Departure Delays out of the Equation",
+    y = "Arrival Delay - Departure Delay",
+    x = "Time in Air",
+    caption = "Negative values equate to time made up in air, positive values represent time lost in air"
+  )
+```
+
+This plot doesn't quite make sense, or at least there is more going on here than we originally thought.  
+So what's going on there? Any relation to Taxi Out time? 
+
+```{r taxi-out, echo=FALSE}
+atx %>% ggplot(aes(x = TaxiOut, y = DepDelay)) + 
+  geom_point(color = "dark orange", alpha = 0.5) + 
+  my_ggtheme() + labs(
+    title = "Taxi Out vs Departure Delays",
+    x = "Time to Taxi Out",
+    y = "Departure Delay Time"
+  )
+
+
+```
+
+It looks like there isn't the time needed to Taxi out doesn't have an impact on when a plane was set to depart. But does it have an effect on Arrival Delay?
+
+```{r, echo=FALSE, warning=FALSE}
+atx %>% ggplot(aes(x = TaxiOut, y = ArrDelay)) + 
+  geom_point(alpha = 0.5, color = "dark orange") +
+  my_ggtheme() + 
+  labs( x = "Time to Taxi to Take off",
+        y = "Arrival Delay",
+        title = "Does Taxi Time Affect Arrival Delay?")
+```
+Now we are getting somewhere, this relationship makes sense and may account for some of the confounding variables we saw in the earlier plot.  
+
+What happens when we take both ends of taxi time into account? 
+
+```{r, echo=FALSE, warning=FALSE}
+atx %>% mutate(
+  taxiTotal = TaxiOut + TaxiIn
+) %>% ggplot( aes(x = taxiTotal, y = ArrDelay)) + 
+  geom_point(alpha = 0.5, color = "dark orange") +
+  my_ggtheme() + 
+  labs(
+    title = "Taxi In & Out vs Arrival Delay",
+    subtitle = "What happens when we take both taxi out of gate, and taxi to gate into account",
+    y = "Arrival Delay",
+    x = "Taxi In + Tax Out"
+  )
+```
+
+This still makes sense but if we add `Departure Delay` too? 
+
+```{r, echo=FALSE, warning=FALSE}
+atx %>% mutate( 
+    ground_delay = TaxiOut + TaxiIn + DepDelay
+  ) %>% 
+  ggplot(aes(x = ground_delay, y = ArrDelay)) + 
+  geom_point(color = "dark orange", fill = 0.5) + 
+  my_ggtheme() + 
+  labs(
+    title = "Ground Delays vs Arrival Delay", 
+    subtitle = "Where Ground Delays is Taxi in + Taxi Out + Departure Delay",
+    x = "Ground Delays",
+    y = "Arrival Delay"
+  ) + geom_abline(intercept = 0, slope = 1, color = "purple")
+```
+There we go! That makes sense! When we add together all three togehter we see a clear relationship with the total Arrival Delay. This plot also shows how time can be made up in the air by looking at the deviation from the purple line which is simply y = x. So now back to the original question, can you make up more time in the air? 
+
+```{r, echo=FALSE, warning = FALSE}
+atx %>% mutate(
+  ground_delay = TaxiOut + TaxiIn + DepDelay, 
+  airDelay = ArrDelay - ground_delay,
+  madeUp = ifelse(airDelay < 0, "Yes", "No")
+) %>% ggplot(aes(x = AirTime, y = airDelay)) + 
+  geom_point(aes(color = madeUp), alpha = 0.5) + 
+  my_ggtheme() +
+  labs(
+    title = "Can you make up time on Longer Flights?",
+    subtitle = "Looking at the distribution of time added or removed in the air",
+    y = "Time in the Air contribution to Arrival Delay",
+    x = "Time in Air"
+  )
+```
+Here is the answer to the question we were looking for. Pilots can in fact make up some time in the air but it largely but it helps the longer the flight is in the air. 
+
+
+## Portfolio Modeling
+In this project I decided I wanted to learn what NOT to do when it comes to trading and see how making simple mistakes can cost you. For that I'm picking three examples of possible poor trading strategies. 
+
+So for the first of the 3 portfolios, I wanted to learn what the return would be if you stuck with a single company who puts togehter these EFTs. The first porfolio all comes from Fidelity and 4 of their various EFTs ranging from Technology to Real Estate. I wanted to see how wise it is to spend it all within a single broker. 
+```{r portfolio-1, echo=FALSE, warning=FALSE, cache=TRUE}
+rm(list=ls())
+
+myStocks = c("FTEC", "ONEQ", "FHLC", "FREL")
+getSymbols(myStocks)
+for (ticker in myStocks) {
+  expr = paste0(ticker, "a = adjustOHLC(",ticker,")")
+  eval(parse(text=expr))
+}
+
+all_returns <- cbind(ClCl(FTEC), ClCl(ONEQ), ClCl(FHLC), ClCl(FREL))
+
+all_returns <- as.matrix(na.omit(all_returns)) 
+N = nrow(all_returns)
+
+return.today = resample(all_returns, 1, orig.ids=FALSE)
+
+initial_wealth = 100000
+my_weights = c(0.25, 0.25, 0.24, 0.25)
+holdings = initial_wealth*my_weights
+n_days = 20
+
+sim1 = foreach(i=1:10000, .combine="rbind") %do% {
+  total_wealth = initial_wealth
+  weights = c(0.25, 0.25, 0.25, 0.25)
+  holdings = weights * total_wealth
+  wealthtracker = rep(0, n_days)
+  for (today in 1:n_days) {
+    return.today = resample(all_returns, 1, orig.ids=FALSE)
+    holdings = holdings + holdings*return.today
+    total_wealth = sum(holdings)
+    wealthtracker[today] = total_wealth
+  }
+  wealthtracker
+}
+
+# Profit/Loss
+mean(sim1[,n_days]) # 101142.2
+sd(sim1[,n_days]) # 5312.29
+mean(sim1[,n_days] - initial_wealth) # 1142.153
+hist(sim1[,n_days]- initial_wealth, breaks=30)
+
+quantile(sim1[,n_days]-initial_wealth, prop=0.05)
+```
+
+When choosing only Fidelity EFTs, our bootstrap sample of 10000 simulations showed that on average we expect the starting wealth to go from `$100,000` to `$101,142.2` over the 20 day trading period with a standard deviation of `$5,312.29`.  
+
+
+The next two portfolios I wanted to look at is to see what happens when you bet on a certain industry to see the risks associated with that and what happens. For the second portfolio I decided to pick 4 EFTs that all are covering the Tech industry. 
+
+```{r portfolio-2, echo=FALSE, cache=TRUE, warning=FALSE}
+rm(list=ls())
+myStocks = c("VGT", "FTEC", "SMH", "IYW")
+getSymbols(myStocks)
+for (ticker in myStocks) {
+  expr = paste0(ticker, "a = adjustOHLC(",ticker,")")
+  eval(parse(text=expr))
+}
+
+all_returns <- cbind(ClCl(VGT), ClCl(FTEC), ClCl(SMH), ClCl(IYW))
+
+all_returns <- as.matrix(na.omit(all_returns)) 
+N = nrow(all_returns)
+
+return.today = resample(all_returns, 1, orig.ids=FALSE)
+
+initial_wealth = 100000
+my_weights = c(0.25, 0.25, 0.25, 0.25)
+holdings = initial_wealth*my_weights
+n_days = 20
+
+sim1 = foreach(i=1:10000, .combine="rbind") %do% {
+  total_wealth = initial_wealth
+  weights = c(0.25, 0.25, 0.25, 0.25)
+  holdings = weights * total_wealth
+  wealthtracker = rep(0, n_days)
+  for (today in 1:n_days) {
+    return.today = resample(all_returns, 1, orig.ids=FALSE)
+    holdings = holdings + holdings*return.today
+    total_wealth = sum(holdings)
+    wealthtracker[today] = total_wealth
+  }
+  wealthtracker
+}
+
+# Profit/Loss
+mean(sim1[,n_days]) #102106.5
+sd(sim1[,n_days])
+mean(sim1[,n_days] - initial_wealth) # 2106.514
+hist(sim1[,n_days]- initial_wealth, breaks=30)
+
+quantile(sim1[,n_days]-initial_wealth, prop=0.05)
+```
+When choosing only Tech EFTs, our bootstrap sample of 10000 simulations showed that on average we expect the starting wealth to go from `$100,000` to `$101,195.2` over the 20 day trading period with a standard deviation of `$6,364.85`. This portfolio had a very slightly higher expected return than the first portfolio but there is higher risk associated in the VaR with this porfolio.
+
+
+
+```{r portfolio-3-real-estate, echo = FALSE, warning=FALSE}
+rm(list=ls())
+myStocks = c("VNQ", "SCHH", "ICF", "FREL")
+getSymbols(myStocks)
+for (ticker in myStocks) {
+  expr = paste0(ticker, "a = adjustOHLC(",ticker,")")
+  eval(parse(text=expr))
+}
+
+all_returns <- cbind(ClCl(VNQ), ClCl(SCHH), ClCl(ICF), ClCl(FREL))
+
+all_returns <- as.matrix(na.omit(all_returns)) 
+N = nrow(all_returns)
+
+return.today = resample(all_returns, 1, orig.ids=FALSE)
+
+initial_wealth = 100000
+my_weights = c(0.25, 0.25, 0.25, 0.25)
+holdings = initial_wealth*my_weights
+n_days = 20
+
+sim1 = foreach(i=1:10000, .combine="rbind") %do% {
+  total_wealth = initial_wealth
+  weights = c(0.25, 0.25, 0.25, 0.25)
+  holdings = weights * total_wealth
+  wealthtracker = rep(0, n_days)
+  for (today in 1:n_days) {
+    return.today = resample(all_returns, 1, orig.ids=FALSE)
+    holdings = holdings + holdings*return.today
+    total_wealth = sum(holdings)
+    wealthtracker[today] = total_wealth
+  }
+  wealthtracker
+}
+
+# Profit/Loss
+mean(sim1[,n_days]) 
+sd(sim1[,n_days])
+mean(sim1[,n_days] - initial_wealth) 
+hist(sim1[,n_days]- initial_wealth, breaks=30)
+
+quantile(sim1[,n_days]-initial_wealth, prop=0.05)
+```
+
+
+
+
+## Market Segmentation
+```{r market_segmentation_load, include=FALSE}
+rm(list=ls())
+library(corrplot)
+
+marketing <- read_csv("Data/social_marketing.csv")
+
+
+```
+
+Looking at the social marketing data and seeing the breakdown of different post breakdowns, it seemed interesting to perform some dimensionality reduction to force the grouping of categories together to make different segments. In an attempt to filter out some of the bots that tend to post the adult content, any user who scored in that category was removed from the dataset. Next, to start to process of dimensionality reduction, we looked at first generating 5 dimensions from the original 36 which produced the output you see below. 
+```{r PCA, echo = FALSE}
+marketing <- marketing %>% filter(
+  adult >= 1
+)
+
+
+pc_marketing = prcomp(marketing %>% select(-X1), rank=5, scale=FALSE)
+
+summary(pc_marketing)
+
+
+```
+This is slightly concerning because it only showed us a cumulative proportion of roughly 60% of the data so we then tried to looking at what happened when we used 6 variables of interest. Which gave us the following output. 
+
+```{r echo=FALSE}
+
+pc_marketing = prcomp(marketing %>% select(-X1), rank=6, 
+                      scale=FALSE)
+summary(pc_marketing)
+```
+We see the proportion of explanation go up by 7 points moving from 5 dimensions to 6 dimensions which is decent improvement but we were curious to see what these groups look like and how they differ from each other. The following plots where taken for each of our dimension (`PCX`) and shows their top 5 descriptive categories, and bottom 5 descriptive categories. 
+```{r echo = FALSE}
+library(gridExtra)
+my_ggtheme <- function() {
+
+  theme_minimal(base_family = "Asap Condensed") +
+    theme(
+      panel.grid.minor = element_blank(),
+      plot.title = element_text(vjust = -1)
+          )
+}
+
+loadings = pc_marketing$rotation %>% 
+  as.data.frame()  %>% 
+  rownames_to_column('Category')
+
+pc1 <- loadings %>% arrange(desc(PC1)) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC1) , y = PC1))+
+  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+    title = "Top Categories for PC1",
+    x = "",
+    y =""
+  )
+
+pc2 <- loadings %>% arrange(desc(PC2)) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC2) , y = PC2))+
+  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+    title = "Top Categories for PC2",
+    x = "",
+    y =""
+  )
+
+pc3 <- loadings %>% arrange(desc(PC3)) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC3) , y = PC3))+
+  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+    title = "Top Categories for PC3",
+    x = "",
+    y =""
+  )
+
+pc4 <- loadings %>% arrange(desc(PC4)) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC4) , y = PC4))+
+  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+    title = "Top Categories for PC4",
+    x = "",
+    y =""
+  )
+
+pc5 <- loadings %>% arrange(desc(PC5)) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC5) , y = PC5))+
+  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+    title = "Top Categories for PC5",
+    x = "",
+    y =""
+  )
+
+pc6 <- loadings %>% arrange(desc(PC6)) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC6) , y = PC6))+
+  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+    title = "Top Categories for PC6",
+    x = "",
+    y =""
+  )
+
+grid.arrange(pc1, pc2, pc3, pc4, pc5, pc6, nrow=3)
+
+#top_n(loadings, n=5, PC1) #%>% 
+  #ggplot(aes(x = "Category", y = PC1)) + 
+  #geom_bar()
+
+```
+```{r, echo=FALSE}
+pc1 <- loadings %>% arrange(PC1) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC1) , y = PC1))+
+  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+    title = "Bottom Categories for PC1",
+    x = "",
+    y =""
+  )
+
+pc2 <- loadings %>% arrange((PC2)) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC2) , y = PC2))+
+  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+    title = "Bottom Categories for PC2",
+    x = "",
+    y =""
+  )
+
+pc3 <- loadings %>% arrange((PC3)) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC3) , y = PC3))+
+  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+    title = "Bottom Categories for PC3",
+    x = "",
+    y =""
+  )
+
+pc4 <- loadings %>% arrange((PC4)) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC4) , y = PC4))+
+  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+    title = "Bottom Categories for PC4",
+    x = "",
+    y =""
+  )
+
+pc5 <- loadings %>% arrange((PC5)) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC5) , y = PC5))+
+  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+    title = "Bottom Categories for PC5",
+    x = "",
+    y =""
+  )
+
+pc6 <- loadings %>% arrange((PC6)) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC6) , y = PC6))+
+  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+    title = "Bottom Categories for PC6",
+    x = "",
+    y =""
+  )
+
+grid.arrange(pc1, pc2, pc3, pc4, pc5, pc6, nrow=3)
+```
+These plots show a few interesting things. Firstly, that there are a few repeat categories that appear across multiple dimensions like cooking, health and nutrition, and sports and outdoors. And this makes sense because it is a nutrition company so those traits are likely shared across all the followers. 
+
+
+## Author Attribution
+
+```{r author-setup, include=FALSE}
+library(tm) 
+library(slam)
+library(proxy)
+library(readtext)
+library(tidytext)
+
+
+
+```
+```{r cache=TRUE}
+filelist = list.files(recursive = T, full.names = T, pattern = "*.txt")
+
+df <- filelist %>% 
+  set_names(.) %>% 
+  map_df(readtext, .id="FileName")
+
+df <- df %>% mutate(
+  isTrain = ifelse(grepl("test", FileName,  fixed = F) , "Test", "Train")
+)
+
+text_train <- df %>% filter(isTrain == "Train")
+text_test <- df %>% filter(isTrain == "Test")
+
+tidy_train <- text_train %>% 
+  unnest_tokens(word, text)
+
+
+```
+
+
+
