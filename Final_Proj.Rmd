@@ -669,7 +669,8 @@ library(readtext)
 library(tidytext)
 library(stringr)
 library(reactable)
-
+library(text2vec)
+library(magrittr)
 ```
 ```{r echo = FALSE, cache=TRUE}
 data_train_dr <- system.file("Data/ReutersC50/C50train/")
@@ -694,9 +695,6 @@ head(data_train)
 So the first step was reading all the files into two different data frames, one for the training set - the other for testing. Each data frame had two columns, the author and text. After that we were then able to start performing text analysis by cleaning the text data. Starting by transforming all the words to lowercase and turning them into to tokens. After that we created a vector matrix for each text document based on our built vocab. From there we then trained a model on 
 
 ```{r error=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
-library(text2vec)
-library(magrittr)
-
 
 
 # Create Vocab Words
