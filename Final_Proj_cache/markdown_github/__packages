@@ -28,3 +28,7 @@ slam
 proxy
 readtext
 tidytext
+reactable
+text2vec
+magrittr
+glmnet

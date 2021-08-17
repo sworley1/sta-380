@@ -227,7 +227,10 @@ Here is the answer to the question we were looking for. Pilots can in fact make 
 
 
 ## Portfolio Modeling
-In this project I decided I wanted to learn what NOT to do when it comes to trading and see how making simple mistakes can cost you. For that I'm picking three examples of possible poor trading strategies. 
+In this project I decided I wanted to learn what NOT to do when it comes to trading and see how making simple mistakes can cost you. For that I'm picking three examples of possible poor trading strategies. The same process is going to be repeated for the three funds. 
+* Create a sample portfolio
+* Gather historical data
+* Run 10,000, 20 day simulations of bootstrap sampling following the provided rules. 
 
 So for the first of the 3 portfolios, I wanted to learn what the return would be if you stuck with a single company who puts togehter these EFTs. The first porfolio all comes from Fidelity and 4 of their various EFTs ranging from Technology to Real Estate. I wanted to see how wise it is to spend it all within a single broker. 
 ```{r portfolio-1, echo=FALSE, warning=FALSE, cache=TRUE}
@@ -325,7 +328,7 @@ quantile(sim1[,n_days]-initial_wealth, prop=0.05)
 ```
 When choosing only Tech EFTs, our bootstrap sample of 10000 simulations showed that on average we expect the starting wealth to go from `$100,000` to `$101,195.2` over the 20 day trading period with a standard deviation of `$6,364.85`. This portfolio had a very slightly higher expected return than the first portfolio but there is higher risk associated in the VaR with this porfolio.
 
-
+The last industry I wanted to test the strategy of solo porfolio investment is the real estate industry. These 4 funds come from 4 different brokers but all cover the real-estate industry.  
 
 ```{r portfolio-3-real-estate, echo = FALSE, warning=FALSE}
 rm(list=ls())
@@ -371,11 +374,13 @@ hist(sim1[,n_days]- initial_wealth, breaks=30)
 quantile(sim1[,n_days]-initial_wealth, prop=0.05)
 ```
 
+This portfolio had the lowest expected outcome across the 10,000 simulations and also one of the highest risks associated with it. And at the 5% risk level some of the worst outcomes possible. 
 
+This exercise made it clear that diversification is key, even when it is limited to one provider. The first portfolio with the differing industry offerings had the highest estimated return on investment compared to the others that focused solely on one industry. 
 
 
 ## Market Segmentation
-```{r market_segmentation_load, include=FALSE}
+```{r market_segmentation_load, include=FALSE, warning=FALSE, message=FALSE}
 rm(list=ls())
 library(corrplot)
 
@@ -423,7 +428,7 @@ loadings = pc_marketing$rotation %>%
 
 pc1 <- loadings %>% arrange(desc(PC1)) %>% slice(1:5) %>%
   ggplot(aes(x = reorder(Category, PC1) , y = PC1))+
-  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+  geom_col(fill = "dark green") + coord_flip() + my_ggtheme() + labs(
     title = "Top Categories for PC1",
     x = "",
     y =""
@@ -431,7 +436,7 @@ pc1 <- loadings %>% arrange(desc(PC1)) %>% slice(1:5) %>%
 
 pc2 <- loadings %>% arrange(desc(PC2)) %>% slice(1:5) %>%
   ggplot(aes(x = reorder(Category, PC2) , y = PC2))+
-  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+  geom_col(fill = "dark green") + coord_flip() + my_ggtheme() + labs(
     title = "Top Categories for PC2",
     x = "",
     y =""
@@ -439,7 +444,7 @@ pc2 <- loadings %>% arrange(desc(PC2)) %>% slice(1:5) %>%
 
 pc3 <- loadings %>% arrange(desc(PC3)) %>% slice(1:5) %>%
   ggplot(aes(x = reorder(Category, PC3) , y = PC3))+
-  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+  geom_col(fill = "dark green") + coord_flip() + my_ggtheme() + labs(
     title = "Top Categories for PC3",
     x = "",
     y =""
@@ -447,7 +452,7 @@ pc3 <- loadings %>% arrange(desc(PC3)) %>% slice(1:5) %>%
 
 pc4 <- loadings %>% arrange(desc(PC4)) %>% slice(1:5) %>%
   ggplot(aes(x = reorder(Category, PC4) , y = PC4))+
-  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+  geom_col(fill = "dark green") + coord_flip() + my_ggtheme() + labs(
     title = "Top Categories for PC4",
     x = "",
     y =""
@@ -455,7 +460,7 @@ pc4 <- loadings %>% arrange(desc(PC4)) %>% slice(1:5) %>%
 
 pc5 <- loadings %>% arrange(desc(PC5)) %>% slice(1:5) %>%
   ggplot(aes(x = reorder(Category, PC5) , y = PC5))+
-  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+  geom_col(fill = "dark green") + coord_flip() + my_ggtheme() + labs(
     title = "Top Categories for PC5",
     x = "",
     y =""
@@ -463,7 +468,7 @@ pc5 <- loadings %>% arrange(desc(PC5)) %>% slice(1:5) %>%
 
 pc6 <- loadings %>% arrange(desc(PC6)) %>% slice(1:5) %>%
   ggplot(aes(x = reorder(Category, PC6) , y = PC6))+
-  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+  geom_col(fill = "dark green") + coord_flip() + my_ggtheme() + labs(
     title = "Top Categories for PC6",
     x = "",
     y =""
@@ -527,40 +532,247 @@ pc6 <- loadings %>% arrange((PC6)) %>% slice(1:5) %>%
 
 grid.arrange(pc1, pc2, pc3, pc4, pc5, pc6, nrow=3)
 ```
-These plots show a few interesting things. Firstly, that there are a few repeat categories that appear across multiple dimensions like cooking, health and nutrition, and sports and outdoors. And this makes sense because it is a nutrition company so those traits are likely shared across all the followers. 
+These plots show a few interesting things. Firstly, that there are a few repeat categories that appear across multiple dimensions like cooking, health and nutrition, and sports and outdoors. And this makes sense because it is a nutrition company so those traits are likely shared across all the followers. It might be interesting to see the same results but removing some of the common attributes like:
+* `health_nutrition`
+* `cooking`
+* `photo_sharing`
 
+```{r, echo=FALSE}
+
+#marketing <- marketing %>% select(-health_nutrition, -cooking, -photo_sharing)
+
+pc_marketing = prcomp(marketing %>% select(-X1), rank=6, 
+                      scale=FALSE)
+summary(pc_marketing)
+
+
+loadings = pc_marketing$rotation %>% 
+  as.data.frame()  %>% 
+  rownames_to_column('Category')
+
+pc1 <- loadings %>% arrange(desc(PC1)) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC1) , y = PC1))+
+  geom_col(fill = "dark green") + coord_flip() + my_ggtheme() + labs(
+    title = "Top Categories for PC1",
+    x = "",
+    y =""
+  )
+
+pc2 <- loadings %>% arrange(desc(PC2)) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC2) , y = PC2))+
+  geom_col(fill = "dark green") + coord_flip() + my_ggtheme() + labs(
+    title = "Top Categories for PC2",
+    x = "",
+    y =""
+  )
+
+pc3 <- loadings %>% arrange(desc(PC3)) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC3) , y = PC3))+
+  geom_col(fill = "dark green") + coord_flip() + my_ggtheme() + labs(
+    title = "Top Categories for PC3",
+    x = "",
+    y =""
+  )
+
+pc4 <- loadings %>% arrange(desc(PC4)) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC4) , y = PC4))+
+  geom_col(fill = "dark green") + coord_flip() + my_ggtheme() + labs(
+    title = "Top Categories for PC4",
+    x = "",
+    y =""
+  )
+
+pc5 <- loadings %>% arrange(desc(PC5)) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC5) , y = PC5))+
+  geom_col(fill = "dark green") + coord_flip() + my_ggtheme() + labs(
+    title = "Top Categories for PC5",
+    x = "",
+    y =""
+  )
+
+pc6 <- loadings %>% arrange(desc(PC6)) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC6) , y = PC6))+
+  geom_col(fill = "dark green") + coord_flip() + my_ggtheme() + labs(
+    title = "Top Categories for PC6",
+    x = "",
+    y =""
+  )
+
+grid.arrange(pc1, pc2, pc3, pc4, pc5,  pc6, nrow=3)
+
+
+pc1 <- loadings %>% arrange(PC1) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC1) , y = PC1))+
+  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+    title = "Bottom Categories for PC1",
+    x = "",
+    y =""
+  )
+
+pc2 <- loadings %>% arrange((PC2)) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC2) , y = PC2))+
+  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+    title = "Bottom Categories for PC2",
+    x = "",
+    y =""
+  )
+
+pc3 <- loadings %>% arrange((PC3)) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC3) , y = PC3))+
+  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+    title = "Bottom Categories for PC3",
+    x = "",
+    y =""
+  )
+
+pc4 <- loadings %>% arrange((PC4)) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC4) , y = PC4))+
+  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+    title = "Bottom Categories for PC4",
+    x = "",
+    y =""
+  )
+
+pc5 <- loadings %>% arrange((PC5)) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC5) , y = PC5))+
+  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+    title = "Bottom Categories for PC5",
+    x = "",
+    y =""
+  )
+
+pc6 <- loadings %>% arrange((PC6)) %>% slice(1:5) %>%
+  ggplot(aes(x = reorder(Category, PC6) , y = PC6))+
+  geom_col(fill = "dark orange") + coord_flip() + my_ggtheme() + labs(
+    title = "Bottom Categories for PC6",
+    x = "",
+    y =""
+  )
+
+grid.arrange(pc1, pc2, pc3, pc4, pc5, pc6, nrow=3)
+
+```
+The results of this is still surprising. The cumulative proportion explained actually decreased 3 points and we still don't see super clear differences in our groups. 
+We can generate a few user personas for the company however that are slightly different and more distinct than the original. `PC5` and `PC6` seem to be reletively distinct and defined compared to the others. `PC5` provides the company with a demographic who is really big into personal fitness, the outdoors, and dating. Likely healthy, fit, singles in their 20s. `PC6` is similar but with a bigger focus on on automotive and online gaming. This groups is could be associated to towards males.
+
+While these two groups are relatively distinct the `PC4` and `PC3` are very similar to each other and don't provide the company much distinction.  
+
+Going forward it would be helpful for the company to peform more feature extraction from Twitter and beyond what their followers are saying but also what their followers are interacting with, and engagement with various other themed campaigns to determine give this segment analysis more data to work with. 
 
 ## Author Attribution
 
-```{r author-setup, include=FALSE}
+```{r author-setup,  message=FALSE, warning = FALSE}
 library(tm) 
 library(slam)
 library(proxy)
 library(readtext)
 library(tidytext)
-
-
-
-```
-```{r cache=TRUE}
-filelist = list.files(recursive = T, full.names = T, pattern = "*.txt")
-
-df <- filelist %>% 
-  set_names(.) %>% 
-  map_df(readtext, .id="FileName")
-
-df <- df %>% mutate(
-  isTrain = ifelse(grepl("test", FileName,  fixed = F) , "Test", "Train")
-)
-
-text_train <- df %>% filter(isTrain == "Train")
-text_test <- df %>% filter(isTrain == "Test")
-
-tidy_train <- text_train %>% 
-  unnest_tokens(word, text)
-
+library(stringr)
+library(reactable)
 
 ```
+```{r echo = FALSE, cache=TRUE}
+data_train_dr <- system.file("Data/ReutersC50/C50train/")
+data_train <- readtext(paste0(data_train_dr, "Data/ReutersC50/C50train/*"),
+                       dvsep = "\n")
+
+data_test_dr <- system.file("Data/ReutersC50/C50test/")
+data_test <- readtext(paste0(data_train_dr, "Data/ReutersC50/C50test/*"),
+                       dvsep = "\n")
 
 
+Authornames <- as.data.frame(rep(basename(list.dirs("Data/ReutersC50/C50train")), each=50))
+Authornames <- Authornames[-(1:50),]
+
+
+data_train$Author <- as.factor(Authornames)
+data_test$Author <- as.factor(Authornames)
+
+head(data_train)
+```
+
+So the first step was reading all the files into two different data frames, one for the training set - the other for testing. Each data frame had two columns, the author and text. After that we were then able to start performing text analysis by cleaning the text data. Starting by transforming all the words to lowercase and turning them into to tokens. After that we created a vector matrix for each text document based on our built vocab. From there we then trained a model on 
+
+```{r error=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+library(text2vec)
+library(magrittr)
+
+
+
+# Create Vocab Words
+train_tokens <- word_tokenizer(tolower(data_train$text))
+it_train = itoken(train_tokens,
+                  progressbar = FALSE)
+vocab = create_vocabulary(it_train)
+
+
+vectorizer = vocab_vectorizer(vocab)
+
+dtm_train = create_dtm(it_train, vectorizer)
+
+
+library(glmnet)
+NFOLDS = 3
+glmnet_classifier = cv.glmnet(x = dtm_train, y = data_train[["Author"]],
+                              family = "multinomial",
+                              alpha = 1,
+                              type.measure = "class",
+                              nfolds = NFOLDS,
+                              thresh = 1e-3,
+                              maxit = 1e5)
+
+plot(glmnet_classifier)
+
+```
+The training model looks like the best lambda value occurs with a value equal to 
+
+```{r}
+# Process the training data
+test_tokens <- word_tokenizer(tolower(data_test$text))
+it_test = itoken(test_tokens,
+                  progressbar = FALSE)
+vocab = create_vocabulary(it_test)
+
+
+vectorizer = vocab_vectorizer(vocab)
+dtm_test = create_dtm(it_test, vectorizer)
+
+
+
+predict(glmnet_classifier, dtm_train, type = "response")
+```
+
+
+## Association Rule Mining
+
+```{r groceries, include=FALSE}
+rm(list=ls())
+library(igraph)
+library(arules)
+library(arulesViz)
+groceries <- read.transactions("Data/groceries.txt", sep = ",")
+```
+```{r, warning=FALSE, error=FALSE}
+grocery_rules <- apriori(groceries, parameter=list(support=0.0001, confidence=.001, maxlen=5))
+rules_conf <- sort(grocery_rules, by = "confidence", decreasing = TRUE)
+
+inspect(head(rules_conf, n=10))
+```
+
+```{r}
+grocery_rules <- apriori(groceries, parameter=list(support=0.01, confidence=.01, maxlen=5))
+rules_conf <- sort(grocery_rules, by = "lift", decreaseing = TRUE)
+inspect(head(rules_conf, m=10))
+
+```
+
+```{r}
+plot(grocery_rules, method="two-key plot")
+```
+
+
+```{r }
+tmp <- subset(grocery_rules, subset = confidence > 0.01 & support > 0.005)
+plot(tmp)
+```
 
